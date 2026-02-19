@@ -1,12 +1,10 @@
 ---
-title: "examples and figures"
+title: "Script to reproduce Figures 2-5"
 output: html_document
 date: "2025-02-20"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
+```{r message = FALSE}
 # Load packages
 library(criticalESvalue)
 library(effectsize)
@@ -17,31 +15,20 @@ library(tidyverse)
 library(faux)
 ```
 
-# Calculate critical ES for shoe example
-```{r}
-new_shoe <- rnorm(30, 0.2, 1)
-old_shoe <- rnorm(30, 0, 1)
+### Figure 2
 
-ttest <- t.test(new_shoe, old_shoe, var.equal = TRUE, alternative = "greater")
-critical(ttest)
-```
-
-# Create Figure 2
-```{r}
-# Define critical value
+```{r figure_2, warning=FALSE}
 critical_value <- 1.98447
+N <- 50
 
-# Create data for the two distributions
 x <- seq(-4, 4, length.out = 1000)
-y_null <- dnorm(x)  # Null hypothesis (Standard Normal Distribution)
-y_alt <- dt(x - 0.5, df = 30)  # Alternative hypothesis (t-distribution with df=30)
+y_null <- dnorm(x)  
+y_alt <- dt(x - 0.5, df = N - 2) 
 
-# Create a data frame for plotting
 plot_data <- data.frame(x = rep(x, 2), 
                         y = c(y_null, y_alt), 
                         Distribution = factor(rep(c('Null', 'Alternative'), each = 1000)))
 
-# Plot
 p <- ggplot(plot_data, aes(x = x, y = y, color = Distribution, linetype = Distribution)) +
   geom_line(size = 1.2) +
   scale_color_manual(values = c('darkblue', 'darkred')) +
@@ -49,7 +36,6 @@ p <- ggplot(plot_data, aes(x = x, y = y, color = Distribution, linetype = Distri
   theme_minimal() +
   geom_vline(xintercept = c(-critical_value, critical_value), color = 'grey', linetype = 'solid') 
 
-# Shaded region (Beta)
 shade_data <- data.frame(x = x, 
                          y = ifelse(x < critical_value & x > -critical_value, y_alt, NA),
                          Distribution = 'Alternative')
@@ -62,27 +48,29 @@ p <- p +
   scale_y_continuous(limits = c(0, 0.5)) +
   theme_bw() 
 
-# Add labels and annotations
-p <- p +
-  annotate('text', x = 0.25, y = 0.15, label = 'β', size = 6, color = 'darkblue') +
-  annotate('text', x = 3.2, y = 0.04, label = expression(alpha/2), size = 5, color = 'darkred') +
-  annotate('text', x = -3.2, y = 0.04, label = expression(alpha/2), size = 5, color = 'darkred') +
-  annotate('text', x = critical_value + 0.4, y = 0.35, 
-           label = as.expression(bquote("critical " * italic(t) * " = " * .(format(critical_value, digits = 5)))), size = 4) +
-  xlab(expression(italic(t)*"-statistic")) +
+p +
+  annotate("text", x = 0.25, y = 0.15, 
+           label = "beta", size = 6, 
+           color = "darkblue", parse = TRUE) +
+  annotate("text", x = 3.2, y = 0.04, 
+           label = "alpha/2", size = 5, 
+           color = "darkred", parse = TRUE) +
+  annotate("text", x = -3.2, y = 0.04, 
+           label = "alpha/2", size = 5, 
+           color = "darkred", parse = TRUE) +
+  annotate("text", x = critical_value + 0.4, y = 0.35, 
+           label = paste0("critical~italic(t) == ", 
+                          format(critical_value, digits = 5)), 
+           size = 4, parse = TRUE) +
+  xlab(expression(italic(t) * "-statistic")) +
   ylab("Likelihood")
 
-# Display the plot
-p
-
-ggsave(here("figures", "figure_2.pdf"), width = 6, height = 4)
-
+ggsave(here("figures", "fig2.png"), width = 6, height = 4)
 ```
 
+###  Figure 3
 
-# Simulate data for Figure 3
-```{r}
-
+```{r simulations_figure_3}
 set.seed(123)
 
 sim1 <- data.frame(x = rnorm(100000, 0, 0.5),
@@ -122,14 +110,11 @@ sim7 <- data.frame(x = rnorm(50, 0, 0.5),
                    y = c(rep("EXP", 25), rep("CON", 25)))
 
 es_sim7 <- cohens_d(x ~ y, data = sim7)
-
-
 ```
 
-# Create Figure 3
-``` {r, echo=FALSE}}
+### Figure 3
 
-# Create data frame 
+```{r figure_3}
 ci_data <- data.frame(
   Group = factor(c("N = 100000", "N = 10000", "N = 1000", 
                    "N = 500", "N = 250", "N = 100", "N = 50"), 
@@ -140,10 +125,8 @@ ci_data <- data.frame(
   Upper = c(es_sim1$CI_high, es_sim2$CI_high, es_sim3$CI_high, 
             es_sim4$CI_high, es_sim5$CI_high, es_sim6$CI_high, es_sim7$CI_high))
 
-# Reverse order y axis
 ci_data$Group <- factor(ci_data$Group, levels = rev(levels(ci_data$Group)))
 
-# Plot
 ggplot(ci_data, aes(y = Group, xmin = Lower, xmax = Upper)) +
   geom_errorbarh(height = 0.2) +  
   geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
@@ -152,133 +135,111 @@ ggplot(ci_data, aes(y = Group, xmin = Lower, xmax = Upper)) +
        y = "Study sample size (N)") +
   theme_bw()
 
-ggsave(here("figures", "figure_3.pdf"), width = 5, height = 4)
+ggsave(here("figures", "fig3.png"), width = 6, height = 4)
 ```
 
-# Simulate data for Figure 4
-```{r faux}
-set.seed(1122)
+### Figure 4
 
-# Define the design
-between <- list(group = c("EXP", "CON"))  # Between-subjects factor: Group
-within <- list(measurement = c("PRE", "POST"))  # Within-subjects factor: Measurement
+```{r simulations_figure_4}
+set.seed(126609)
 
-# Set the correlation matrix for the within-subjects factor (PRE and POST)
-cor_mat <- matrix(c(1, 0.7,
-                    0.7, 1), 
-                  nrow = 2, byrow = TRUE)
+# Set parameters
+n <- 20
+between <- list(group = c("EXP", "CON"))        
+within <- list(measurement = c("PRE", "POST"))  
+r <- 0.7
+mu <- c(8, 8.6,   
+        8, 8.5)   
+sd <- c(1, 1,  
+        1.4, 1.4)  
 
-# Define means and standard deviations for each condition
-mu <- c(8, 8.6,   # EXP group: PRE, POST
-        8, 8.4)   # CON group: PRE, POST
-
-sd <- c(1, 1,  # EXP group: PRE, POST
-        1, 1)  # CON group: PRE, POST
-
-# Simulate the data with 50 participants per group
+# Simulate data
 data_simulated <- sim_design(
   between = between,
   within = within,
-  n = 20,
+  n = n,
   mu = mu,
   sd = sd,
-  r = cor_mat,
-  long = TRUE)
+  r = r,
+  plot = FALSE,
+  empirical = TRUE,
+  long = FALSE)
 ```
 
-# Calculate stats for Figure 4
-```{r}
-
-# Subset the data for each group
+```{r stats_figure_4, include = FALSE}
+# Create subset for EXP and CON
 data_exp <- subset(data_simulated, group == "EXP")
 data_con <- subset(data_simulated, group == "CON")
 
-# Subset the data for each group and measurement
-pre_exp <- data_exp$y[data_exp$measurement == "PRE"]
-post_exp <- data_exp$y[data_exp$measurement == "POST"]
+# Perform paired t-test and calculate Cohen's drm for EXP
+t_test_exp <- t.test(data_exp$POST, data_exp$PRE, paired = TRUE)
+es_exp <- repeated_measures_d(data_exp$POST, data_exp$PRE, method = "rm", adjust = FALSE)  
 
-pre_con <- data_con$y[data_con$measurement == "PRE"]
-post_con <- data_con$y[data_con$measurement == "POST"]
+# Perform paired t-test and calculate Cohen's drm for CON
+t_test_con <- t.test(data_con$PRE, data_con$POST, paired = TRUE)
+es_con <- repeated_measures_d(data_con$PRE, data_con$POST, method = "rm", adjust = FALSE) 
 
-# Conduct paired t-test for the EXP group (Pre vs. Post)
-t_test_exp <- t.test(pre_exp, post_exp, paired = TRUE)
-print(t_test_exp)
-
-# within-subject ES for experimental group
-abs(t_test_exp$statistic) / sqrt(19)
-  
-critical(t_test_exp)
-
-# Conduct paired t-test for the CON group (Pre vs. Post)
-t_test_con <- t.test(pre_con, post_con, paired = TRUE)
-print(t_test_con)
-
-# within-subject ES for experimental group
-abs(t_test_con$statistic) / sqrt(19)
-critical(t_test_con) 
-
-# Differences in differences
-diff_exp <- post_exp - pre_exp
-diff_con <- post_con - pre_con
+# Perform t-test for differences between EXP and CON
+diff_exp <- data_exp$POST - data_exp$PRE
+diff_con <- data_con$POST - data_con$PRE
 
 t_test_diff <- t.test(diff_exp, diff_con)
-print(t_test_diff)
+es_d <- cohens_d(diff_exp, diff_con, adjust = FALSE)
 ```
 
-# Create Figure 5
-```{r}
+### Figure 4
+
+```{r figure_4, warning=FALSE}
+
+data_simulated <- sim_design(
+  between = between,
+  within = within,
+  n = n,
+  mu = mu,
+  sd = sd,
+  r = r,
+  plot = FALSE,
+  empirical = TRUE,
+  long = TRUE)
 
 ggplot(data_simulated, aes(x = group, y = y, fill = measurement)) +
-  geom_boxplot(width = 0.5, alpha = 0.5, outlier.shape = NA, color = "black") +  # Set color for outline
+  geom_boxplot(width = 0.5, alpha = 0.5, outlier.shape = NA, color = "black") +  
   scale_y_continuous(expand = c(0,0), limits = c(0, 20), breaks = seq(0, 20, 5)) +
   scale_fill_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +
-  scale_color_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +  # Still needed if you're mapping color to another variable
+  scale_color_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +  
   labs(x = NULL, y = "Time trial (min)", fill = "Measurement") +
   theme_bw() +
-  theme(legend.position = "right") +
-  theme(axis.title.x = element_text(size = 12), 
+  theme(legend.position = "right",
+        axis.title.x = element_text(size = 12),
         axis.title.y = element_text(size = 12)) +
-  annotate('text', x = 2, y = 14, 
-           label = expression(italic(p) == 0.12), 
-           size = 4) +
-  annotate('text', x = 1, y = 14, 
-           label = expression(italic(p) == 0.002),
-           size = 4) +
-  annotate('text', x = 1.5, y = 17, 
-           label = expression(italic(p) == 0.12), 
-           size = 4) +
-  geom_segment(aes(x = 1.87, xend = 2.12, y = 13.5, yend = 13.5), 
-               color = "black", size = 0.4) +  
-  geom_segment(aes(x = 0.87, xend = 1.12, y = 13.5, yend = 13.5), 
-               color = "black", size = 0.4) +
-  geom_segment(aes(x = 0.995, xend = 2.0, y = 16.5, yend = 16.5), 
-               color = "black", size = 0.5)
+  annotate('text', x = 2, y = 14, label = "italic(p) == 0.053", parse = TRUE, size = 4) +
+  annotate('text', x = 1, y = 14, label = "italic(p) == 0.003", parse = TRUE, size = 4) +
+  annotate('text', x = 1.5, y = 17, label = "italic(p) == 0.739", parse = TRUE, size = 4) +
+  geom_segment(aes(x = 1.87, xend = 2.12, y = 13.5, yend = 13.5), color = "black", linewidth = 0.4) +  
+  geom_segment(aes(x = 0.87, xend = 1.12, y = 13.5, yend = 13.5), color = "black", linewidth = 0.4) +
+  geom_segment(aes(x = 0.995, xend = 2.0, y = 16.5, yend = 16.5), color = "black", linewidth = 0.5)
 
-ggsave(here("figures", "figure_4.pdf"), width = 6, height = 4)
+ggsave(here("figures", "fig4.png"), width = 6, height = 4)
 ```
 
+####-------Figure 5--------### \# Simulate data for Figure 5
 
-# Simulate data for Figure 5
-```{r faux}
+```{r simulations_figure_5}
 set.seed(323)
 
-# Define the design
-between <- list(group = c("EXP", "CON"))  # Between-subjects factor: Group
-within <- list(measurement = c("PRE", "POST"))  # Within-subjects factor: Measurement
+between <- list(group = c("EXP", "CON"))  
+within <- list(measurement = c("PRE", "POST"))  
 
-# Set the correlation matrix for the within-subjects factor (PRE and POST)
 cor_mat <- matrix(c(1, 0.7,
                     0.7, 1), 
                   nrow = 2, byrow = TRUE)
 
-# Define means and standard deviations for each condition
-mu <- c(8.3, 8.8,   # EXP group: PRE, POST
-        8.1, 8.3)   # CON group: PRE, POST
+mu <- c(8.3, 8.8,   
+        8.1, 8.3)   
 
-sd <- c(1, 1,  # EXP group: PRE, POST
-        1, 1)  # CON group: PRE, POST
+sd <- c(1, 1,  
+        1, 1)  
 
-# Simulate the data with 50 participants per group
 data_simulated <- sim_design(
   between = between,
   within = within,
@@ -289,72 +250,57 @@ data_simulated <- sim_design(
   long = TRUE)
 ```
 
+### Stats for Figure 5
 
-```{r}
-# Subset the data for each group
+```{r stats_figure_5}
 data_exp <- subset(data_simulated, group == "EXP")
 data_con <- subset(data_simulated, group == "CON")
 
-# Subset the data for each group and measurement
 pre_exp <- data_exp$y[data_exp$measurement == "PRE"]
 post_exp <- data_exp$y[data_exp$measurement == "POST"]
 
 pre_con <- data_con$y[data_con$measurement == "PRE"]
 post_con <- data_con$y[data_con$measurement == "POST"]
 
-# Conduct t-test for the EXP vs. CON at pre-intervention
+# Perform unpaired t-test between EXP and CON at PRE and calculate Cohen's ds 
 t_test_pre <- t.test(pre_exp, pre_con)
-print(t_test_pre)
+cohens_d(pre_exp, pre_con, adjust = FALSE)
 
-# within-subject ES for experimental group
-abs(t_test_pre$statistic) / sqrt(38)
-critical(t_test_pre)
-
-# Conduct paired t-test for the CON group (Pre vs. Post)
+# Perform unpaired t-test between EXP and CON at POST and calculate Cohen's ds 
 t_test_post <- t.test(post_exp, post_con)
-print(t_test_post)
+cohens_d(post_exp, post_con, adjust = FALSE)
 
-# within-subject ES for experimental group
-abs(t_test_post$statistic) / sqrt(38)
-critical(t_test_post) 
-
-# Differences in differences
+# Perform unpaired t-test between EXP and CON for the difference between PRE and POST
+# and calculate Cohen's ds 
 diff_exp <- post_exp - pre_exp
 diff_con <- post_con - pre_con
 
 t_test_diff <- t.test(diff_exp, diff_con)
-print(t_test_diff)
-
+cohens_d(diff_exp, diff_con, adjust = FALSE)
 ```
 
+### Figure 5
 
-# Create Figure 5
-```{r}
+```{r figure_5}
 ggplot(data_simulated, aes(x = group, y = y, fill = measurement)) +
-  geom_boxplot(width = 0.5, alpha = 0.5, outlier.shape = NA, color = "black") +  # Set color for outline
+  geom_boxplot(width = 0.5, alpha = 0.5, outlier.shape = NA, color = "black") +
   scale_y_continuous(expand = c(0,0), limits = c(0, 20), breaks = seq(0, 20, 5)) +
   scale_fill_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +
-  scale_color_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +  # Still needed if you're mapping color to another variable
+  scale_color_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +
   labs(x = NULL, y = "Time trial (min)", fill = "Measurement") +
   theme_bw() +
-  theme(legend.position = "right") +
-  theme(axis.title.x = element_text(size = 12), 
+  theme(legend.position = "right",
+        axis.title.x = element_text(size = 12),
         axis.title.y = element_text(size = 12)) +
-  annotate('text', x = 1.5, y = 15, 
-           label = expression(italic(p) == 0.12), 
-           size = 4) +
-  annotate('text', x = 1.5, y = 13, 
-           label = expression(italic(p) == 0.002),
-           size = 4) +
-  annotate('text', x = 1.5, y = 17, 
-           label = expression(italic(p) == 0.12), 
-           size = 4) +
-  geom_segment(aes(x = 1.12, xend = 2.12, y = 14.5, yend = 14.5), 
-               color = "black", size = 0.4) +  
-  geom_segment(aes(x = 0.87, xend = 1.87, y = 12.5, yend = 12.5), 
-               color = "black", size = 0.4) +
-  geom_segment(aes(x = 0.995, xend = 2.0, y = 16.5, yend = 16.5), 
-               color = "black", size = 0.5)
+  annotate("text", x = 1.5, y = 15,
+           label = "italic(p) == 0.04", parse = TRUE, size = 4) +
+  annotate("text", x = 1.5, y = 13,
+           label = "italic(p) == 0.07", parse = TRUE, size = 4) +
+  annotate("text", x = 1.5, y = 17,
+           label = "italic(p) == 0.8", parse = TRUE, size = 4) +
+  geom_segment(aes(x = 1.12, xend = 2.12, y = 14.5, yend = 14.5), color = "black", size = 0.4) +
+  geom_segment(aes(x = 0.87, xend = 1.87, y = 12.5, yend = 12.5), color = "black", size = 0.4) +
+  geom_segment(aes(x = 0.995, xend = 2.0, y = 16.5, yend = 16.5), color = "black", size = 0.5)
 
-ggsave(here("figures", "figure_5.pdf"), width = 6, height = 4)
+ggsave(here("figures", "fig5.png"), width = 6, height = 4)
 ```

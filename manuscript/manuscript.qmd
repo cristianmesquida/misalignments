@@ -1,0 +1,606 @@
+---
+title: "What is your hypothesis?"
+subtitle: "On the importance of knowing your hypothesis before conducting a hypothesis test"
+author:
+  - name: Cristian Mesquida
+    corresponding: true
+    orcid: 0000-0002-1542-8355
+    email: c.mesquida.caldentey\@tue.nl
+    roles:
+     - conceptualization
+     - formal analysis
+     - data curation
+     - writing — original draft
+    affiliations: 
+     name: Eindhoven University of Technology
+     group: Human-Technology Interaction Group
+     department: Department of Industrial Design
+     city: Eindhoven
+     country: The Netherlands
+  - name: Joe Warne
+    orcid: 0000-0002-4359-8132
+    roles:
+     - supervision
+     - writing — review and editing
+    affiliations: 
+     name: Technological University Dublin
+     department: School of Biological, Health and Sports Sciences
+     city: Dublin
+     country: Ireland
+  - name: Daniël Lakens
+    orcid: 0000-0002-0247-239X
+    roles:
+     - supervision
+     - conceptualization
+     - writing — review and editing
+    affiliations: 
+     name: Eindhoven University of Technology
+     group: Human-Technology Interaction Group
+     department: Department of Industrial Design
+     city: Eindhoven
+     country: The Netherlands
+author-note:
+   disclosures: 
+     data-sharing: The data and analysis scripts related to this study are publicly available on the Open Science Framework and can be found at https://osf.io/axk5q/.
+     conflict-of-interest: The authors have no conflicts of interest to disclose.
+     financial-support: Cristian Mesquida was supported by the Ammodo Science Award 2023 for Social Sciences.
+blank-lines-above-author-note: 2
+format: apaquarto-docx
+editor: visual
+bibliography: references.bib
+---
+
+```{r load_packages}
+#| echo: false
+#| message: false
+#| warning: false
+
+# Load packages
+library(here)
+library(criticalESvalue)
+library(knitr)
+library(effectsize)
+library(ggplot2)
+library(gridExtra)
+library(tidyverse)
+library(faux)
+```
+
+## Abstract
+
+Null hypothesis significance testing (NHST) is a methodological procedure that allows sports and exercise scientists to make claims about the effect of interventions while controlling error rates. To be useful, NHST requires a clearly defined hypothesis and the use of an appropriate hypothesis test. However, we contend that these two conditions are often not met, and as a result, NHST is frequently applied without rigor. This can lead to situations in which stated hypotheses are actually not tested (Misalignment 1-3), or where type I and type II errors are inflated (Misalignment 4-5), ultimately resulting in misleading claims. In this paper, we deconstruct a series of hypotheses into basic statements to identify five types of commonly observed misalignment and offer recommendations for their proper testing. To address these issues, we recommend increased collaboration between sports scientists and applied statisticians, enhanced statistical training and the adoption of the PICO framework, which provides a structured approach for clearly defining the hypothesis that a study aims to test.
+
+\pagebreak
+
+## The logic of hypothesis tests
+
+Sports scientists often aim to establish reliable claims about physical performance, such as to determine the effects of training interventions on physical performance. One common approach for establishing claims is the hypothetico-deductive method [@hempel1966]. In this approach, researchers derive a hypothesis from a theory or empirical observations, which is then tested and subsequently either corroborated or falsified. A hypothesis is a testable verbal statement about the presence, absence, or magnitude of an effect or relationship between one or more variables within a given population.
+
+Importantly, testing a hypothesis entails the commitment to evaluate whether it is corroborated or falsified. This is essentially a discrete probability space with only two answers (yes or no)—a dichotomous claim—[@tunc2023; but see also @frick1996; @nickerson2000]. By making a dichotomous claim, researchers want to communicate whether the hypothesis of interest has been corroborated or not by empirical data. Since data inherently contain random variability, researchers need a tool like hypothesis tests to distinguish between patterns that may be random noise and those that are unlikely to be mere random noise. Sports scientists interested in making reliable claims while controlling the maximum error rate usually rely on the Neyman-Pearson approach to null-hypothesis significance testing (NHST). According to the logic of NHST (@fig-fig1.1), a hypothesis ($H$) is first translated into a pair of statistical hypotheses: $H_0$ and $H_1$. $H_0$ represents the *negation* of $H$, and it should always include an equality sign (i.e., =, $\geq$ and/or $\leq$). $H_1$ represents the *assertion* of $H$, should always include the opposite sign as $H_0$ (i.e., $\neq$, \> and/or \<), and it includes all other values that are not contained in $H_0$. Thus, $H_0$ and $H_1$ are mutually exclusive­—they cannot be true at the same time­—and collectively exhaustive—they encompass the entire range of possible outcomes—. $H_0$ is almost always specified as an effect of 0, but $H_0$ can be set to any non-zero value, or even as a range of values around 0 [@mazzolari_2022; @murphy1999].
+
+```{r}
+#| echo: false
+#| label: fig-fig1.1
+#| fig-align: 'center'
+#| fig-cap: "The logic of hypothesis testing according to the Neyman-Pearson approach to Null Hypothesis Significance Testing."
+
+include_graphics(here("figures", "figure_1.pdf"))
+```
+
+```{r critical_es}
+#| echo: false
+
+# For reproducibility
+set.seed(094090)
+
+# Set parameters
+alpha <- 0.05
+n <- 30
+new_shoe <- rnorm(n, 0.2, 1)
+old_shoe <- rnorm(n, 0, 1)
+
+# Perform t-test
+ttest <- t.test(new_shoe, old_shoe, var.equal = TRUE, sig.level = 0.05, alternative = "greater")
+
+# Calculate critical effect size
+# critical <- critical(ttest)
+critical <- critical_t2s(m1 = mean(new_shoe),
+                         m2 = mean(old_shoe),
+                         sd1 = sd(new_shoe),
+                         sd2 = sd(old_shoe),
+                         n1 = n,
+                         n2 = n,
+                         var.equal = FALSE,
+                         hypothesis = "greater",
+                         conf.level = 1- alpha)
+```
+
+Once the researcher has assigned a specific value to $H_0$, $H_1$ will consist of all remaining possible values~.~ A hypothesis test is performed where a test statistic is computed based on the data and an assumed statistical model, which is compared against the critical test statistic (*t~c~*). The value of *t~c~* defines the cutoff point for rejecting $H_0$ and it depends on the sample size, the statistical test, and $\alpha$, which represents the maximum acceptable type I error rate (e.g., 5%) for the incorrect rejection of $H_0$. When the observed test statistic exceeds *t~c~*, $H_0$ is rejected. Conversely, if the observed test statistic is less than or equal to *t~c~*, $H_0$ is not rejected. Alternatively, hypothesis tests can be framed in terms of *p*-values: the *p*-value will be smaller than $\alpha$ when the observed test statistic exceeds *t~c~*, or equivalently, when the observed effect size exceeds the critical effect size, which corresponds to the minimal effect size that will reach statistical significance given a sample size, hypothesis test and $\alpha$ [@perugini2025]. For example, suppose that a sports scientist recruits 30 participants per group to test the following hypothesis:
+
+H: The new shoe model (EXP) will improve running economy (RE) compared to the old shoe (CON) model during a 20-minute time trial
+
+This hypothesis leads to the formulation of two mutually exclusive statistical hypotheses:
+
+$H_0$: $EXP_{RE}$ – $CON_{RE}$ $\leq$ 0 \[the assertion of $H$\]
+
+$H_1$: $EXP_{RE}$ – $CON_{RE}$ \> 0 \[the negation of $H$\]
+
+In alignment with the directional hypothesis, the sports scientist conducts a one-sided *t*-test with an $\alpha$ of `r alpha*100`%. Given a sample size of `r n` participants per group, the critical *t*-statistic for a one-sided *t*-test and $\alpha$ of `r alpha` is 1.67, which corresponds to a critical effect size of Cohen’s *d* of `r round(critical$dc, 2)`. Therefore, only effects sizes greater than or equal to *d* = `r round(critical$dc, 2)` will result in a *p*-value less than or equal to $\alpha$, leading to the rejection of $H_0$ in support of H. Observing an effect size *d* $\geq$ `r round(critical$dc, 2)` would allow the sports scientist to claim that “new shoes significantly improve running economy”. Conversely, observing an effect size of *d* \< `r round(critical$dc, 2)`, or *p* \> `r alpha*100`, will lead to the non-rejection of $H_0$, and lead to the conclusion that “the data do not allow us to claim that new shoes significantly improve running economy”.
+
+One common criticism of null-hypothesis significance testing is that it is often performed poorly. For a scientific claim based on a hypothesis test to be valid, the tested hypothesis, the statistical test, and the scientific claim must be logically aligned. However, while coding the literature for meta-scientific projects [@mesquida_zcurve_2025], we noticed that this logical alignment is very often compromised in practice. When a misalignment between the stated hypothesis, the statistical test, and the scientific claim occurs, the scientific claim sport scientists make does not logically follow from the test they have performed. In previous research has highlighted related issues, including vague theoretical predictions [@strategic_ambiguity], the difficulty of translating a theoretical prediction into a testable statistical hypothesis [@scheel_why_hypothesis], and the frequent absence of a clearly defined effect that researchers aim to establish or estimate [@kahan_estimands2024; @lundberg2021] In this paper we focus on a recurrent issue in sports and exercise science where researchers test hypotheses involving multiple interventions measured on multiple outcomes without clearly defining which test results would corroborate or falsify their prediction. This lack of clarity undermines the logic of hypothesis testing. As a consequence, claims in sports and exercise science are often not severely tested [@mayo2006], in the sense that it is too easy for sports scientists to state that a claim is supported by data. For example, a misalignment between hypotheses and statistical tests can lead to situations where multiple tests are used to test the same hypothesis, without correcting for multiple comparisons. This work aims to start a scientific conversation among sports scientists about the importance of aligning the tested hypothesis, the statistical test, and the claim in scientific papers. Inspired by Hand’s [-@hand1994] seminal paper “Deconstructing Statistical Questions”, we carefully analyze a series of hypotheses into basic statements to reveal common types of misalignment in the published literature. Our examples come from published articles, but as our goal is to highlight general categories of misalignment, we do not cite the specific examples. Indeed, these examples are simply “one of many” and therefore do not deserve individual scrutiny. Throughout the article, we will consistently use the following abbreviations: $H$ refers to the hypothesis statement, $H_0$ and $H_1$ refer to the null and alternative hypotheses, respectively; EXP refers to the mean of the experimental condition or intervention group, while CON refers to the mean of the placebo or control group. $\alpha$ is set to 5%.
+
+## Type of Misalignment
+
+### Misalignment 1: Testing a directional hypothesis using a two-sided statistical test
+
+If sports scientists are testing a hypothesis that makes a directional prediction, such as caffeine will improve reaction time compared to a placebo, then the statistical test must also reflect this directional nature. The first misalignment occurs when a directional hypothesis is tested using a two-sided statistical test, and after obtaining a *p* \< $\alpha$, the scientist makes the directional claim that the experimental condition is superior to the control condition. $H_0$ is an effect of 0 (i.e., $\mu$ = 0), while $H_1$ is any other effect (i.e., $\mu$ $\neq$ 0). @fig-fig1.2 illustrates a scenario where a two-sided independent *t*-test is performed with 50 participants per group, and a true effect size of Cohen's *d~s~* = 0.1. We see that it is possible to observe a statistically significant effect in the negative direction (the blue area to the left of the vertical grey line at –1.99, which is the critical value in the negative direction). Logically, after rejecting a statistical test for any non-zero effect, it is not possible to claim an effect in a positive direction.
+
+```{r}
+#| echo: false 
+#| warning: false
+#| label: fig-fig1.2
+#| fig-align: 'center'
+#| fig-cap: "Illustration of the null (red curve) and alternative (blue curve) distributions of the $\\textit{t}$-statistic in a two-sided test. The critical $\\textit{t}$-value (1.9845) indicates the threshold for significance at the 5% level ($\\alpha = 0.05$). The areas labeled as $\\alpha/2$ under the null distribution correspond to the rejection regions. The shaded blue area under the alternative distribution represents the likelihood of observing data under the alternative hypothesis, corresponding to Cohen's $d_s = 0.1$."
+
+# Set paramters
+critical_value <- 1.98447
+N <- 50
+x <- seq(-4, 4, length.out = 1000)
+y_null <- dnorm(x)  
+y_alt <- dt(x - 0.5, df = N - 2) 
+
+# Create data frame
+plot_data <- data.frame(x = rep(x, 2), 
+                        y = c(y_null, y_alt), 
+                        Distribution = factor(rep(c('Null', 'Alternative'), each = 1000)))
+
+# Create plot
+p <- ggplot(plot_data, aes(x = x, y = y, color = Distribution, linetype = Distribution)) +
+  geom_line(size = 1.2) +
+  scale_color_manual(values = c('darkblue', 'darkred')) +
+  scale_linetype_manual(values = c('solid', 'solid')) +
+  theme_minimal() +
+  geom_vline(xintercept = c(-critical_value, critical_value), color = 'grey', linetype = 'solid') 
+
+shade_data <- data.frame(x = x, 
+                         y = ifelse(x < critical_value & x > -critical_value, y_alt, NA),
+                         Distribution = 'Alternative')
+p <- p + 
+  geom_area(data = shade_data, 
+            aes(x = x, y = y), 
+            fill = 'darkblue', 
+            alpha = 0.3) +
+  scale_x_continuous(limits = c(-4, 4), breaks = seq(-4, 4, 1)) +
+  scale_y_continuous(limits = c(0, 0.5)) +
+  theme_bw() 
+
+p +
+  annotate("text", x = 0.25, y = 0.15, 
+           label = "beta", size = 6, 
+           color = "darkblue", parse = TRUE) +
+  annotate("text", x = 3.2, y = 0.04, 
+           label = "alpha/2", size = 5, 
+           color = "darkred", parse = TRUE) +
+  annotate("text", x = -3.2, y = 0.04, 
+           label = "alpha/2", size = 5, 
+           color = "darkred", parse = TRUE) +
+  annotate("text", x = critical_value + 0.4, y = 0.35, 
+           label = paste0("critical~italic(t) == ", 
+                          format(critical_value, digits = 5)), 
+           size = 4, parse = TRUE) +
+  xlab(expression(italic(t) * "-statistic")) +
+  ylab("Likelihood")
+```
+
+It may seem obvious that making a directional claim after performing a two-sided statistical test is logically incoherent—after all, a directional hypothesis needs to be examined using a one-tailed statistical test—. This is precisely our point. Nevertheless, researchers commonly make directional claims based on two-sided tests, which can inadvertently lead them to accept their hypothesis but in the wrong direction. In a previous meta-scientific project where we selected the statistical result central to the tested hypothesis, we found that out of 350 studies, 6 (2%) studies claimed the existence of an effect in the opposite direction to what was expected, while still implicitly claiming support for the stated hypothesis.
+
+```{r efficiency}
+#| echo: false
+
+# Set parameters
+d <- 0.2
+power <- 0.8
+alpha <- 0.05
+
+two_sided <- power.t.test(d = d,
+                          power = power,
+                          sig.level = alpha,
+                          type = "two.sample",
+                          alternative = "two.sided")
+
+one_sided <- power.t.test(d = d,
+                          power = power,
+                          sig.level = alpha,
+                          type = "two.sample",
+                          alternative = "one.sided")
+
+efficiency <- ceiling(one_sided$n*100 / two_sided$n)
+```
+
+The misalignment can be resolved in two ways. First, researchers can align their claim to the two-sided statistical test and simply say that the null hypothesis is rejected without making a scientific claim about the direction of the effect. This can still be followed by an estimate of the effect size. Second, researchers can align their test to the claim. There are two ways to do this. One approach is to perform a one-sided test at the $\alpha$ level if they are theoretically or practically only interested in an effect in one direction. A benefit of one-sided tests is that they have higher power to detect an effect size of interest compared to two-sided tests [@cho_abe2013]. For instance, given any effect size, and assuming a power of 80%, a one-sided test requires approximately `r efficiency`% of the total sample size of a two-sided test. This is a benefit that should not be overlooked, especially in fields such as sports and exercise science, where sample sizes are small, and studies might not have a high power to detect the effect of interest. The second approach is to perform two one-sided tests, each at $\alpha$/2, one in the positive direction, and one in the negative direction [@kaiser1960]. This test has the same type I error rate and the same power as a two-sided test, but it logically allows for a directional claim (unlike the two-sided test) without any additional cost. This solution might seem similar enough to the logically incoherent practice of making a directional claim after a two-sided test to wonder why one should worry about this misalignment. But if researchers are really interested in effects in a single direction, which they often seem to be, the optimal statistical test is a one-sided test, and awareness of this fact could increase the efficiency of statistical tests in sports and exercise science.
+
+### Misalignment 2: Testing a hypothesis of no difference with a classic null statistical test
+
+Sports scientists often aim to test hypotheses that predict a difference between interventions, or that a new intervention is superior to a standard one. Less often, the hypothesis of interest predicts no difference (or, in other words, equivalence) between two or more interventions. For example, a study might hypothesize that foam rolling and static stretching produce equivalent effects on range of motion. In a previous meta-scientific project where we selected the statistical result central to the tested hypothesis, we found that out of 350 studies, 36 (\~10%) included a hypothesis of equivalence. This figure is likely an underestimation, as we only selected one hypothesis per study, whereas studies often test multiple hypotheses. Notably, all 36 studies (100%) used a classic statistical test to reject the null hypothesis of no difference. This leads to a misalignment in which scientists claim that two conditions are equivalent by failing to reject the null hypothesis of no difference [@aczel2018; @murphy_nonsignificance_2025]. To illustrate the misalignment, consider the case of a sports scientist testing the following hypothesis:
+
+$H$: There will be no difference in the decline of muscle force measured with dynamometry between cryotherapy (EXP) and napping (CON).
+
+This $H$ leads to the formulation of two statistical hypotheses:
+
+$H_0$: EXP – CON = 0 \[the assertion of $H$\]
+
+$H_0$: EXP – CON $\neq$ 0 \[the negation of the assertion\]
+
+To test such a hypothesis, 50 football players are randomly allocated to either the intervention group or the control group after performing a high-intensity exercise bout. After collecting data on these 50 football players, a statistical test is conducted. When *p* \> $\alpha$, the sports scientist should interpret this result as a failure to find sufficient evidence against $H_0$, rather than as evidence supporting the absence of an effect. In other words, they cannot confidently claim that there is no difference between the two interventions. NHST only allows us to reject $H_0$; if we fail to reject $H_0$, we cannot conclude that $H_0$ is true or that it is supported—only that the evidence is insufficient to rule it out—. As $H_1$ encompasses all non-zero effects, such as effects of 0.01, it is practically impossible to detect all possible effects with low error rates. Therefore, we cannot argue that there is no effect, because small effects remain possible, even after a non-significant test result.
+
+To compound the issue, due to sampling error, observed effects in a sample will almost always be non-zero even if the true population effect is 0, and there are no statistical tools that allow us to conclude an effect is exactly 0 [@frick1996]. Even if a large number of participants is collected, the CI around the observed effect size will converge to 0, but always contain a range of plausible non-zero effects [@fig-fig1.3] that cannot be statistically rejected.
+
+```{r simulations_figure_3}
+#| include: false
+
+set.seed(123)
+
+# Perform simulation 1 and calcualte effect size
+sim1 <- data.frame(x = rnorm(100000, 0, 0.5),
+                   y = c(rep("EXP", 50000), rep("CON", 50000)))
+
+es_sim1 <- cohens_d(x ~ y, data = sim1)
+
+# Perform simulation 2 and calcualte effect size
+sim2 <- data.frame(x = rnorm(10000, 0, 0.5),
+                   y = c(rep("EXP", 5000), rep("CON", 5000)))
+
+es_sim2 <- cohens_d(x ~ y, data = sim2)
+
+# Perform simulation 3 and calcualte effect size
+sim3 <- data.frame(x = rnorm(1000, 0, 0.5),
+                   y = c(rep("EXP", 500), rep("CON", 500)))
+
+es_sim3 <- cohens_d(x ~ y, data = sim3)
+
+# Perform simulation 4 and calcualte effect size
+sim4 <- data.frame(x = rnorm(500, 0, 0.5),
+                   y = c(rep("EXP", 250), rep("CON", 250)))
+
+es_sim4 <- cohens_d(x ~ y, data = sim4)
+
+# Perform simulation 5 and calcualte effect size
+sim5 <- data.frame(x = rnorm(250, 0, 0.5),
+                   y = c(rep("EXP", 125), rep("CON", 125)))
+
+es_sim5 <- cohens_d(x ~ y, data = sim5)
+
+# Perform simulation 6 and calcualte effect size
+sim6 <- data.frame(x = rnorm(100, 0, 0.5),
+                   y = c(rep("EXP", 50), rep("CON", 50)))
+
+es_sim6 <- cohens_d(x ~ y, data = sim6)
+
+# Perform simulation 7 and calcualte effect size
+sim7 <- data.frame(x = rnorm(50, 0, 0.5),
+                   y = c(rep("EXP", 25), rep("CON", 25)))
+
+es_sim7 <- cohens_d(x ~ y, data = sim7)
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-fig1.3
+#| fig-align: 'center'
+#| fig-cap: "Illustration of how the width of the 95% CI decreases as the sample size increases. The 95% CI were simulated assuming a true effect of 0. Although the 95% CI becomes narrower with larger sample sizes, it continues to include both zero and small, non-zero effects. This illustrates that, due to sampling error, it is statistically impossible to confirm that the true effect is zero, as the CI always contains a range of plausible non-zero effects."
+ 
+# Create a data frame
+ci_data <- data.frame(
+  Group = factor(c("N = 100000", "N = 10000", "N = 1000", 
+                   "N = 500", "N = 250", "N = 100", "N = 50"), 
+          levels = c("N = 100000", "N = 10000", "N = 1000", 
+                     "N = 500", "N = 250", "N = 100", "N = 50")),  
+  Lower = c(es_sim1$CI_low, es_sim2$CI_low, es_sim3$CI_low, 
+            es_sim4$CI_low, es_sim5$CI_low, es_sim6$CI_low, es_sim7$CI_low),  
+  Upper = c(es_sim1$CI_high, es_sim2$CI_high, es_sim3$CI_high, 
+            es_sim4$CI_high, es_sim5$CI_high, es_sim6$CI_high, es_sim7$CI_high))
+
+# Relevel group factor
+ci_data$Group <- factor(ci_data$Group, levels = rev(levels(ci_data$Group)))
+
+# Create plot
+ggplot(ci_data, aes(y = Group, xmin = Lower, xmax = Upper)) +
+  geom_errorbarh(height = 0.2) +  
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
+  scale_x_continuous(breaks = seq(-1, 1, 0.20), limits = c(-1, 1)) +
+  labs(x = expression("Cohen's " * italic(d) * " effect size"), 
+       y = expression("Study sample size (" * italic(n) * ")")) +
+  theme_bw()
+```
+
+To resolve this misalignment, researchers can reformulate their research question in a way that it can be statistically answered. One solution is to test whether the null hypothesis of ’an effect’ can be rejected in an equivalence test. To perform an equivalence test, researchers first need to specify which effects they consider large enough to be interesting. Researchers can specify a range of equivalence defined by the lower (Δ~L~) and upper (Δ~U~) bounds of the smallest effect size of interest (SESOI). Any observed difference falling within this range is deemed equivalent to a null effect, in the sense that even if the effect size is not numerically 0, it is too small to be considered meaningfully different from 0. The SESOI represents the smallest difference deemed practically relevant or theoretically important [@anvari_sesoi]. An equivalence test reverses the pair of statistical hypotheses, allowing researchers to reject effects that are as large, or larger than, the SESOI:
+
+$H_{01}$: EXP – CON $\le$ ΔL and $H_{02}$ : CON – EXP $\le$ Δ~U~
+
+$H_{1}$: Δ~L~ \< EXP – CON \< Δ~U~
+
+In other words, for $H_0$ to be rejected, differences should be more extreme than the upper and lower limits as determined by a SESOI, as opposed to simply different than 0. The structure of these statistical hypotheses is determined by the aim of the study—to establish equivalence between two interventions by rejecting the presence of effects large enough to be deemed meaningful—. Thus, to support their hypothesis of equivalence, sports scientists must reject the null hypothesis of non-equivalence, which states that the respective difference between Cryotherapy and Napping is large enough to be meaningful. $H_0$ is composed of two composite hypotheses: $H_{01}$: EXP – CON $\le$ Δ~L~ and $H_{02}$~:~ EXP – CON $\le$ Δ~U~), which together define the boundaries of the equivalence region. To claim equivalence, the CI of the observed difference must lie entirely within the pre-specified bounds between Δ~L~ and Δ~U~, demonstrating that the observed difference is too small to be of practical or clinical importance. Determining these boundaries requires researchers to define the SESOI. For example, when testing whether cryotherapy and napping produce equivalent effects on muscle force, the sports scientist might define the SESOI as ±30 Newtons. In this case, the equivalence region would be from –30 to +30, and statistical support for equivalence would require rejecting $H_{01}$: EXP – CON $\le$ –30 and $H_{01}$~:~ EXP – CON $\le$ +30. In other words, the entire CI around the observed effect falls within the range of ±30 Newtons.
+
+Specifying the SESOI is a complex process that depends on the research question and the intended aims of the study. For a comprehensive overview, readers are referred to Anvari and Lakens [-@anvari_sesoi], Cook et al. [-@cook_2014] and Keefe et al. [-@keefe_2013]. Best practice would be pre-specifying the SESOI in the preregistration or before data collection. This is essential as the narrower the range of equivalence, or the smaller the effect size one tries to reject, the larger the sample size that is required to design a test with high power. For tutorial papers on how to perform equivalence tests (and power analysis), readers are referred to Lakens [-@lakens_equivalence_2017] and Mazzolari et al. [-@mazzolari_2022].
+
+### Misalignment 3: Failing to test whether the observed effect is of practical significance
+
+Sports scientists sometimes claim that an effect is practically relevant based on the results of a classic hypothesis test. For instance, consider a sports scientist testing the following hypothesis:
+
+$H$: Mean 20-minute time-trial power output will be different after ingestion of ketones \[EXP\] compared to a control group \[CON\].
+
+This H leads to the formulation of two statistical hypotheses:
+
+$H_0$: EXP – CON = 0 \[the negation of the assertion\]
+
+$H_1$: EXP – CON $\neq$ 0 \[the assertion of $H$\]
+
+After performing a two-sided *t*-test, the sport scientist finds that the time-trial power output was 2.4% lower after EXP versus CON ingestion. The effect is statistically significant (*p* \< $\alpha$). There are two possible misalignments. First, researchers might simply argue that the effect is practically significant, without having specified which effect sizes are large enough to matter (e.g., by specifying the SESOI before data collection). In this case, it is not possible to test the claim that the effect is practically relevant, as the comparison standard (which effect is of interest, and which effects are too small to be practically significant) is not specified. In essence, researchers are making an unsubstantiated claim. Second, the researcher might have specified a SESOI, but claim an effect is practically significant without testing against it. Let’s assume a researcher has specified that an increase of 2% is practically meaningful, which is in absolute terms smaller than the observed 2.4% difference. However, the sports scientists cannot claim that the observed difference of 2.4% is of practical importance because this estimate comes with uncertainty (which can be quantified through a CI around the effect size estimate), and a test is required to claim with a maximum error rate (for example by testing if the SESOI of 2% does not fall inside the 95% CI of the mean difference). To make the claim that 2.4% is statistically different from 2%, the sport scientist should have explicitly tested against the null hypothesis of an effect as large or smaller than 2% in a minimum-effect test [@murphy1999]. Following this example, the pair of statistical hypotheses should have included the SESOI (i.e., 2%), which could be stated as:
+
+$H_0$: EXP – CON $\le$ \|2%\| \[the negation of the assertion\]
+
+$H_1$: EXP – CON \> \|2%\| \[the assertion of $H$\]
+
+After performing a minimum-effect test and observing a significant *p*-value (or the 95% CI around the observed difference falls beyond the SESOI), the sport scientist can claim that the observed effect is significantly different from the SESOI [see @mazzolari_2022; @murphy1999].
+
+### Misalignment 4: Omission of the test of an interaction
+
+This misalignment occurs when sports scientists hypothesize an effect that requires the test of the interaction effect, but do not perform or report the actual interaction test. This misalignment typically manifests when sports scientists (1) use a two-factorial design with pre-post repeated measures and (2) hypothesize a moderation effect.
+
+**Omission of the interaction effect in a two-factorial design with pre-post repeated measures**
+
+Sports scientists often hypothesize that one intervention improves performance more than another. To test this hypothesis, researchers design an experimental study where participants are assigned to two groups and the primary outcome is measured before and after the intervention for each group. The statistical hypothesis in this research design is to test whether there is a difference in the change scores between groups, where $H_0$ states that the change scores are the same, while $H_1$ is that the change scores differ.
+
+$H_0$: (EXP~POST~ – EXP~PRE~) – (CON~POST~ – CON~PRE~) = 0
+
+$H_0$: (EXP~POST~ – EXP~PRE~) – (CON~POST~ – CON~PRE~) $\neq$ 0
+
+However, sports scientists often mistakenly claim that one intervention is superior to another intervention when the statistical test for the intervention’s pre-post comparison is statistically significant ($H_0$: EXP~POST~ – EXP~PRE~ = 0), while the null hypothesis for the control’s pre-post comparison is not rejected ($H_0$: CON~POST~ – CON~PRE~ = 0). As has been pointed out in the literature [@bland_2011; @bland2015], the difference between significant and non-significant can itself be non-significant, meaning that this pattern of simple effects is not sufficient to claim the predicted interaction effect has been statistically supported. Consider the following hypothesis:
+
+$H$: Omega-3 fatty acid supplementation will increase VO~2peak~ and improve running economy compared to a control group.
+
+The study reported that there was no significant difference between groups in the change in VO~2peak~ over the 12-week intervention period (*p* \> 0.05). However, a significant increase in VO~2peak~ from pre- to post-intervention in intervention group was observed (*p* \< 0.05) with no significant change in the control group *p* \> 0.05). Based on these results, the study claimed that twelve weeks of omega-3 fatty acid supplementation during endurance training resulted in the improvement of running economy and increased VO~2peak~.
+
+```{r simulations_figure_4, include=FALSE}
+set.seed(126609)
+
+# Set parameters
+n <- 20
+between <- list(group = c("EXP", "CON"))        
+within <- list(measurement = c("PRE", "POST"))  
+r <- 0.7
+mu <- c(8, 8.6,   
+        8, 8.5)   
+sd <- c(1, 1,  
+        1.4, 1.4)  
+
+# Simulate data
+data_simulated <- sim_design(
+  between = between,
+  within = within,
+  n = n,
+  mu = mu,
+  sd = sd,
+  r = r,
+  empirical = TRUE)
+```
+
+```{r stats_figure_4, include = FALSE}
+
+# Create subset for EXP and CON
+data_exp <- subset(data_simulated, group == "EXP")
+data_con <- subset(data_simulated, group == "CON")
+
+# Perform paired t-test and calculate Cohen's drm for EXP
+t_test_exp <- t.test(data_exp$POST, data_exp$PRE, paired = TRUE)
+es_exp <- repeated_measures_d(data_exp$POST, data_exp$PRE, method = "rm", adjust = FALSE)  
+
+# Perform paired t-test and calculate Cohen's drm for CON
+t_test_con <- t.test(data_con$PRE, data_con$POST, paired = TRUE)
+es_con <- repeated_measures_d(data_con$PRE, data_con$POST, method = "rm", adjust = FALSE) 
+
+# Perform t-test for differences between EXP and CON
+diff_exp <- data_exp$POST - data_exp$PRE
+diff_con <- data_con$POST - data_con$PRE
+
+t_test_diff <- t.test(diff_exp, diff_con)
+es_d <- cohens_d(diff_exp, diff_con, adjust = FALSE)
+```
+
+```{r ancova, eval = FALSE, echo = FALSE}
+# We can also perform an ANOCOVA to test for differnces between EXP and CON
+summary(lm(POST ~ group + PRE, data_simulated))
+```
+
+Observing a significant difference between the pre- and post-measures for one intervention, but not for the other, does not necessarily imply that these two interventions differ statistically from each other. For example, suppose the true difference between these two interventions is an effect size of 0, and the sports scientist conducts two paired *t*-tests for each intervention’s pre-post comparison. The effect size for the intervention’s pre-post comparison is *d~rm~* = `r abs(es_exp$d_rm)` (95% CI \[`r round(abs(es_exp$CI_low), 2)`; `r round(abs(es_exp$CI_high), 2)`\]; *p* = `r round(t_test_exp$p.value, 3)`), while the effect size for the control’s pre-post interventions is *d~rm~* = `r round(abs(es_con$d_rm), 2)` (95% CI \[`r round(abs(es_con$CI_low), 2)`; `r round(abs(es_con$CI_high), 2)`\]; *p* = `r round(t_test_con$p.value, 3)`). Although one intervention shows a significant effect and the other does not, the difference between these two effect sizes (`r round(abs(es_exp$d_rm), 2)` and `r round(abs(es_con$d_rm), 2)`) is itself not statistically significant (*d~s~* = `r round(es_d$Cohens_d, 2)`; 95% CI \[`r round(abs(es_d$CI_low), 2)`; `r round(abs(es_d$CI_high), 2)`\]; *p* = `r round(t_test_diff$p.value, 3)`; @fig-fig1.4).
+
+```{r include = FALSE}
+# Rerun the simulation but this time in long format just for easiness to create Figure 4.
+data_simulated <- sim_design(
+  between = between,
+  within = within,
+  n = n,
+  mu = mu,
+  sd = sd,
+  r = r,
+  empirical = TRUE,
+  long = TRUE)
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-fig1.4
+#| fig-align: 'center'
+#| fig-cap: "This example illustrates the case where a sports scientist designs a study with two between-subject groups with pre-post repeated measures and mistakenly claims that the new training intervention improved time trial performance. This error arises when the null hypothesis is rejected for the intervention’s pre-post comparison (*p* = 0.003), but not for the control’s pre-post comparison (*p* = 0.053), despite the difference between the two interventions being non-significant (*p* = 0.739)."
+
+ggplot(data_simulated, aes(x = group, y = y, fill = measurement)) +
+  geom_boxplot(width = 0.5, alpha = 0.5, outlier.shape = NA, color = "black") +  
+  scale_y_continuous(expand = c(0,0), limits = c(0, 20), breaks = seq(0, 20, 5)) +
+  scale_fill_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +
+  scale_color_manual(values = c("PRE" = "darkgrey", "POST" = "black")) +  
+  labs(x = NULL, y = "Time trial (min)", fill = "Measurement") +
+  theme_bw() +
+  theme(legend.position = "right",
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12)) +
+  annotate('text', x = 2, y = 14, label = "italic(p) == 0.053", parse = TRUE, size = 4) +
+  annotate('text', x = 1, y = 14, label = "italic(p) == 0.003", parse = TRUE, size = 4) +
+  annotate('text', x = 1.5, y = 17, label = "italic(p) == 0.739", parse = TRUE, size = 4) +
+  geom_segment(aes(x = 1.87, xend = 2.12, y = 13.5, yend = 13.5), color = "black", linewidth = 0.4) +  
+  geom_segment(aes(x = 0.87, xend = 1.12, y = 13.5, yend = 13.5), color = "black", linewidth = 0.4) +
+  geom_segment(aes(x = 0.995, xend = 2.0, y = 16.5, yend = 16.5), color = "black", linewidth = 0.5)
+```
+
+Sports scientists often use inappropriate statistical tests to analyse the data from designs involving two groups with pre- and post-intervention scores. One mistake is to perform two separate within-group tests where the goal is to reject the null hypothesis of no difference between the pre- and post-intervention scores for the experimental group ($H_0$: EXP~POST~ – EXP~PRE~ = 0) and fail to reject $H_0$ between the pre- and post-intervention scores for the control group ($H_0$: CON~POST~ – CON~PRE~ = 0). When $H_0$: (EXP~POST~ – EXP~PRE~) = 0 is rejected, but not $H_0$: (EXP~POST~ – EXP~PRE~) = 0, sports scientists implicitly claim that the intervention is different or superior to the control group. However, this claim is invalid, as no direct statistical comparison between groups has been made. Differences in significance levels across groups cannot establish a significant difference between groups.
+
+A second flawed strategy is to conduct two between-group comparisons to reject the null hypothesis of no difference in post-intervention scores between the intervention and the control group ($H_0$: EXP~POST~ – CON~POST~ = 0) and fail to reject the null hypothesis of no difference in pre-intervention scores between the intervention and the control group ($H_0$: EXP~PRE~ – CON~PRE~ = 0). When $H_0$: EXP~POST~ – CON~POST~ = 0 is rejected, but $H_0$: EXP~PRE~ – CON~PRE~ = 0 is not rejected, sports scientists implicitly claim that interventions are statistically different because post-intervention scores differ significantly, but pre-intervention scores do not. However, this approach is invalid in non-randomized studies. Without randomization and without incorporating pre-intervention scores in the analysis, it is impossible to determine whether observed post-intervention score differences are caused by the intervention or by pre-existing baseline differences.
+
+The appropiate target in this design is the difference-in-difference effect, where the aim is to reject the null hypothesis that the difference in difference between the experimental and the control group is smaller than or equal to zero. This null hypothesis can be tested by conducting a one-way analysis of variance (ANOVA) on the gain scores or a two-way (mixed) ANOVA with time (pre vs. post) and group (intervention) as factors. These two approaches are mathematically equivalent: the *F* statistic for the interaction between the intervention factor and time factor is identical to the *F* statistic for the intervention main effect with a one-way ANOVA on gain scores [@huck1975].
+
+However, caution is needed when using ANOVA. ANOVA models do not adjust for baseline differences. ANOVA and analysis of covariance (ANCOVA) provide unbiased estimates of the intervention effect when participants are randomly assigned to groups, ensuring no differences at baseline [@oconnell2017]. In non-randomized studies, baseline differences between groups may exist, leading to biased estimates of the intervention effect if these differences are not accounted for. Sports scientists should instead use ANCOVA. One option is an ANCOVA-post model, which uses the post-intervention scores as the outcome, the pre-intervention scores as a covariate and the group as the predictor. Another is an ANCOVA-change model, which uses change scores as the outcome while still including the pre-intervention scores as a covariate, and the group as a predictor. Beyond adjusting for baseline differences, ANCOVA also reduces error variance, yielding smaller standard errors and increased statistical power [@oconnell2017; @vickers2001]. Unfortuntately, despite the prevalence of non-randomized studies in sports and exercise science, ANCOVA remains rarely applied.
+
+**Omission of the interaction effect when testing for a moderation effect**
+
+Sports scientists are often interested in testing hypotheses that predict moderation effects. A moderation effect occurs when the effect of one factor on a primary outcome varies across the levels of a second factor (i.e., the moderator). For example, sports scientists may investigate whether the effect of an experimental condition on exercise performance is moderated by sex. In a 2 x 2 factorial design, this is tested statistically by evaluating the interaction between the two factors. $H_0$ states that the difference in the difference between experimental and control conditions is the same across sexes, while $H_1$ states that the change scores vary by sex.
+
+$H_0$: (EXP~FEMALE~ – CON~FEMALE~) – (EXP~MALE~ – CON~MALE~) = 0
+
+$H_1$: (EXP~FEMALE~ – CON~FEMALE~) – (EXP~MALE~ – CON~MALE~) $\neq$ 0
+
+Although the interaction effect between sex and intervention is the effect of interest, it is often omitted or not reported [@garcia-sifuentes2021]. Consider the following hypothesis:
+
+$H$: Beetroot juice supplementation will increase time to exhaustion more in males than in females.
+
+The study reported that beetroot juice supplementation significantly increased time to exhaustion in males (*p* \< 0.05) but not in females (*p* \> 0.05). Based on these results, the study claimed that beetroot supplementation improved time to exhaustion in males but not in females.
+
+Instead, researchers frequently rely on a significant main effect of sex or perform pairwise comparisons where the intervention and the control are compared within each sex. They then implicitly claim an effect exists when a significant and a non-significant *p*-value is observed for one sex but not the other. It is important to emphasise that, in the first case (main effect of sex), the result indicates only that males and females differ overall, not that the intervention effect differs between them. Similarly, the pairwise comparison within each sex tests only whether there is a difference between intervention and control within males and within females; they do not assess whether those differences themselves differ. Neither approaches test the hypothesis of interest—namely, whether the intervention effect differs between sexes—. To properly address this question, researchers should test the change score or examine the interaction effect.
+
+### Misalignment 5: Incoherent multiple testing approaches
+
+In Boolean logic, the connectors $\cap$ (interpreted as “and”) and $\cup$ (interpreted as “or”) determine whether a statement should be evaluated as a conjunction or disjunction set. For instance, consider a statement consisting of two elements (A and B), each of which is assigned a truth value (true or false). The truth value of the statement can be evaluated by each combination of the value of its elements with a truth table (@tbl-tbl1.1). The $\cap$ connector determines that the statement ($A \cap B$) is tested as a conjunction set, hence the statement is evaluated as true (T) if and only if *both* A and B are true. On the other hand, the $\cup$ connector determines that the statement is tested as a disjunction set ($A \cup B$), hence the statement is evaluated as true when *either* A or B are true.
+
+::: {#tbl-tbl1.1}
+|  A  |  B  | $A \cap B$ | $A \cup B$ |
+|:---:|:---:|:----------:|:----------:|
+|  T  |  F  |     F      |     T      |
+|  F  |  T  |     F      |     T      |
+|  F  |  F  |     F      |     F      |
+|  T  |  T  |     T      |     T      |
+
+: Truth table illustrating the difference between a conjunction ($A \cap B$) and disjunction set ($A \cup B$).
+:::
+
+Boolean logic can be applied to hypothesis testing. A hypothesis can be regarded as a logical statement that researchers attempt to evaluate as corroborated (true) or falsified (false) by using a statistical test. When the effect of an intervention is tested on one primary outcome—what is known as an “individual testing” approach—, the type I error rate can be easily controlled at the specified $\alpha$ . However, a more common situation is when sports scientists test a hypothesis that will involve assessing multiple outcomes and/or compare multiple groups, often at several endpoints, resulting in a multiplicity of tests. In such cases, whether the type I error should be controlled at the specified $\alpha$ by adjusting for multiple comparisons depends on how the hypothesis is formulated, and specifically, whether it is formulated as a conjunction or a disjunction set [@dmitrienko2013; @rubin2021]. A hypothesis formulated as a *conjunction* set implies that *all* hypothesis tests conducted to test the hypothesis must yield a *p* \< $\alpha$ to claim that the hypothesis has been supported—what is known as an intersection-union testing approach­—. This testing approach does not require researchers to adjust for multiple comparisons. Because all tests need to be statistically significant to claim the hypothesis is supported, the type I error rate is not inflated above the nominal $\alpha$ level.
+
+In contrast, when a hypothesis is formulated as a disjunction set, it implies that multiple statistical tests are conducted, and the hypothesis is considered supported if *at least one* of these tests yields *p* \< $\alpha$. This approach is known as the union-intersection testing approach. However, in the context of a union-intersection testing approach, carrying out the multiple statistical tests without adjusting $\alpha$ level inflates the probability of incorrectly rejecting $H_0$, thereby increasing the risk of type I error. To address this problem, a correction for multiple comparisons is required (e.g., the Bonferroni correction).
+
+Misalignment 5 arises when a hypothesis has been formulated as a conjunction or disjunction set, but the testing approach used does not align with the study’s claim or the practical implications of the study [@cook_multiplicity_1996; @dmitrienko2013; @li2016; @molloy2022]. Sports scientists should be aware of the distinction between formulating a hypothesis as a conjunction or disjunction set and consequently should adopt a testing approach that is aligned with their hypothesis.
+
+Failing to adjust for multiple comparisons can inflate the type I error rate. Conversely, applying $\alpha$ adjustments can reduce statistical power, resulting in inflated type II errors [@nakagawa2004]. In both cases, sports scientists risk making misleading claims about the effect of an intervention. Furthermore, if an unnecessary $\alpha$ adjustment is planned and incorporated into the sample size calculation, the study may require a larger sample size than necessary. Based on our experience, we are concerned that sports scientists may often be uncertain about which testing approach to use, and in turn, when it is necessary to adjust for multiple comparisons. As adjusting for multiple comparisons makes it less likely to provide statistical support for a hypothesis, this uncertainty can be used to opportunistically decide not to correct $\alpha$, even when this should be done. When deciding about the testing approach, it can help to consider that within the Neyman-Pearson approach to NHST, (quasi)experimental studies are viewed as a decision-making procedure where researchers make a claim about the effect of an intervention. Following this rationale, the key issue in determining which testing approach should be used is whether multiple hypothesis tests are performed to test the same hypothesis, and are therefore conceptually related [@cook_multiplicity_1996; @li2016; @molloy2022; @parker2020]. Herein, we provide some examples of misalignment 5 and clarify when it is appropriate to use the union-intersection or the intersection-union testing approach.
+
+#### When to apply the union-intersection approach
+
+Sports scientists might often examine the effect of an intervention on related outcomes, without strong theoretical reasons, simply because it is easy to collect additional variables. Consider the following three hypotheses:
+
+$H$: Leg external pneumatic compression treatment compared to a static compression garment will improve performance following a muscle-damaging protocol;
+
+where performance is an umbrella outcome that was operationalised as isokinetic strength, counter-movement jump, and squat jump.
+
+$H$: Cryotherapy will reduce force capacity, afferent feedback and neuromuscular propagation in comparison to a control group
+
+$H$: A 30-minute nap after strenuous exercise will reduce the decline in muscle force;
+
+where muscle force is measured at 5-, 60- and 120-minute post-nap, compared to a control group
+
+What all these examples have in common is that they ignore that multiple statistical tests are used to test a single hypothesis and make a claim based on any significant comparison, and thus increase the risk of committing a type I error. Importantly, the increased risk of type I error depends on the number of statistical tests performed and the correlation between the primary outcomes or measurements [@stefan_2023]. That is, the higher the number of comparisons with lower correlations between primary outcomes/measurements, the more severe the inflation of the type I error rate.
+
+To resolve this misalignment, sports scientists should adopt the union-intersection approach and perform adjustments. However, this approach can undermine researchers’ ability to make a claim about the effect of an intervention when mixed results are obtained—where some outcomes are significant, and others are not—[@cook_multiplicity_1996]. For instance, consider the hypothesis that cryotherapy will reduce force capacity, afferent feedback or neuromuscular propagation in comparison to a control group; would the sports scientist recommend the implementation of cryotherapy as a recovery method after only observing a significant difference in afferent feedback but not in force capacity and neuromuscular propagation? The best practice is to select one single primary outcome (at a predefined endpoint), based on theoretical reasons or established consensus about its importance, which accurately characterises the effect of an intervention. In this case, there are no multiplicity issues because the sport scientist would be adopting an individual testing approach. Focusing on a single primary outcome also facilitates a more straightforward a priori power analysis. While additional variables may still be measured, they should be reported as secondary or exploratory outcomes [@ditroilo_exploratory].
+
+Another situation where sports scientists may overlook the issue of multiple comparisons is in studies involving multiple related interventions—for example, supplement studies with varying doses or intervention studies with different duration—. In such studies, effectiveness is often claimed if any dose comparison reaches significance, but as this is a disjunction set, it requires $\alpha$ adjustment to avoid an inflated type I error. Alternatively, a closed testing approach can be used [@senn2008], where hypotheses are tested sequentially, and the order of testing is pre-specified before data analysis. For example, when comparing two doses and a placebo, it may be unreasonable to claim that a lower dose is effective unless a higher dose also shows superiority. In this approach, the higher dose is tested against the control first, and only if significant, is the lower dose compared to the placebo [@bachelez2015]. This approach allows each comparison be tested while controlling the type I error at $\alpha$. Alternatively, the hypothesis of a dose-response effect can be tested using a contrast test [@baguley2018; @stewart2000] or by modelling the dose-response effect [@senn2008], neither of which requires $\alpha$ adjustments.
+
+#### When to apply the intersection-union approach
+
+Sports scientists often frame their hypothesis as a conjunction set but overlook the fact that such a hypothesis requires adopting the intersection-union testing approach. Consider the following hypothesis:
+
+$H$: Wearing garments post-race will improve average power output, as measured by a 30-second Wingate test and 20-minute cycling time trial
+
+Although the connector “and” denotes the adoption of the intersection-union approach, the study reports that the use of garments post-race significantly improved the 30-second Wingate test but not the 20-minute cycling time trial. Despite this, the study claims that the use of garments improves cycling performance. To resolve this misalignment, sports scientists should avoid making claims about the effect of an intervention based on a single significant comparison when adopting the intersection-union approach. In this framework, the hypothesis would only be supported if wearing garments post-race significantly improves both the 30-second Wingate test and the 20-minute cycling time trail. It cannot be one or the other, without controlling the type I error at $\alpha$. Alternatively, they could adopt the union-intersection approach and perform $\alpha$ adjustments. However, in some cases, two or more outcomes might be crucial for evaluating the effectiveness of an intervention, and a significant effect on each outcome is required [@ema2017; @fda2022]. For example, in clinical investigations for the treatment of chronic obstructive pulmonary disease (COPD), lung function would be insufficient as a single primary outcome and needs to be accompanied by a symptom-based outcome or a patient-related outcome [@ema2017] (see EMA/CHMP/44762/2017). In such cases, $\alpha$ adjustments are not necessary because the trial will only lead to the claim that the treatment should be recommended when all predefined outcomes reach statistical significance. Sports scientists should carefully consider whether multiple outcomes are required for evaluating the effectiveness of an intervention and choose their testing approach accordingly.
+
+#### When to apply the individual testing approach
+
+As we have mentioned, studies often include hypotheses that involve multiple unrelated interventions or outcomes. Consider the following additional hypotheses:
+
+$H$: Beetroot juice supplementation will improve 20-minute all-out power output *and* reduce perception of effort compared to a control group;
+
+$H$: Creatine and beetroot juice (as separate interventions) will improve 3000-m running time trial performance in comparison to a control group;
+
+$H$: Four weeks of high-altitude training will increase maximal oxygen uptake *and* enhance time trial performance at sea level in comparison to the control group.
+
+Although these hypotheses include the connector “and”, they contain multiple, distinct hypotheses that will lead to distinct claims, just as if they were evaluated in separate studies [@cook_multiplicity_1996; @molloy2022]. In the first example, the two outcomes—power output and perception of effort—would support distinct claims. That is, the study may recommend beetroot juice for enhancing performance or for reducing perception of effort. Both claims are independently meaningful and could be evaluated and interpreted separately. In the second example, the focus is on determining whether each supplement is superior to a control. In such multi-intervention studies, the number of comparisons is not relevant because each intervention supports an independent claim [see @parker2020]. In the third example, investigating the physiological mechanism (i.e., changes in maximal oxygen uptake) is orthogonal to assessing the effect of altitude training on time trial performance. Even if high-altitude training enhances sea-level performance without improving VO~2max~, the intervention would still be considered effective for improving endurance performance. Similarly, studies investigating several physiological mechanisms do not require $\alpha$ adjustments since each hypothesis test will lead to distinct claims. Therefore, studies that investigate unrelated interventions or assess unrelated primary outcomes should each result separately, as each may support a different claim [@cook_multiplicity_1996]. Consequently, these should be presented as independent hypotheses rather than combining them into a single hypothesis statement. Importantly, researchers should explicitly report all individual tests they conduct, regardless of significance, as selectively reporting (or even selectively highlighting only significant findings in an abstract) introduces bias and will lead to an inflated type I error rate. Therefore, researchers should transparently communicate that they have reported all individual hypotheses, which can be achieved by preregistering their analysis plan before data collection [@lakens_2024].
+
+#### Improve the conceptual clarity of the study
+
+Evaluating whether the appropriate testing approach was used, and whether $\alpha$ adjustments were properly performed, can be difficult because, in the published literature, hypotheses are often ambiguously stated [@mesquida_2023; @buttner2020]. We define a hypothesis as ambiguous when the intervention effect—the specific comparison between the intervention and the control needed to test the hypothesis—is not defined and the primary outcome used to measure the intervention effect consists of an umbrella term or vague definition that is unmatched in the results section. Without a clearly specified statement, it becomes unclear what the hypothesis is truly predicting, making it easier for sports scientists to support their hypothesis. Consider the following example:
+
+$H$: Napping will improve physical performance
+
+Despite the simplicity of this hypothesis, the study design involves comparing four conditions: (1) normal sleep and no nap, (2) sleep deprivation and no nap, (3) normal sleep and 20-minute nap, and (4) sleep deprivation and 90-minute nap. The sports scientist can thus examine two effects: the effect of napping on physical performance after sleep deprivation or the effect of napping on physical performance after normal sleep. To further compound this ambiguity, the primary outcome (i.e., physical performance) is an umbrella outcome measured as reaction time, counter-movement jump height, and repeated sprint ability. Failing to clearly define the intervention effect and the primary outcome is particularly concerning in studies employing factorial designs or studies involving multiple interventions measured on several primary outcomes. When these two attributes are not clearly defined, researchers can conduct multiple hypothesis tests to test one single hypothesis, which may lead to inflated type I errors and misleading claims. This issue is compounded by the fact that sports and exercise science articles frequently report dozens of statistical tests, making it difficult for readers to determine which analyses correspond to the primary hypothesis. Unfortunately, many studies published in sports and exercise fail to clearly define the intervention effect and the primary outcome [@mesquida_2023; @buttner2020].
+
+The issue of ambiguous hypotheses is further compounded by ambiguous descriptions of how $\alpha$ adjustments are applied. For instance, a very common statement might read: *“A two-way ANOVA was used to investigate significant differences between groups and treatments. Significant main effects and interactions were further analyzed using the Bonferroni corrected post hoc test. All analyses used a significance level of P \< 0.05.”* Such statements, coupled with an ambiguously formulated hypothesis, provide little insight into how $\alpha$ adjustments were applied since the number of hypothesis tests performed remains largely unknown.
+
+To address the issue of ambiguous hypotheses in biomedical research, Schardt et al. [-@schardt2007] proposed the adoption of the PICO framework [@schardt2007]. The PICO framework requires researchers to define four attributes of the intervention effect that the study aims to determine—namely, target population, intervention, comparator and primary outcome, including at which endpoint it will be assessed—. However, a limitation of the PICO framework is that its application does not ensure that the intervention effect is clearly defined, as two critical attributes remain undefined [@keene2023]. First, how intercurrent events are handled. This refers to post-randomization occurrences, such as adherence to the entire number of sessions that make up an intervention or stopping the assigned intervention earlier. How these intercurrent events are handled leads to the estimation of different intervention effects. The other feature is the summary outcome, which defines how the intervention effect is quantified or summarised. Another limitation of the PICO framework is that it does not link the intervention effect to the statistical model used to estimate it. This is especially problematic in sports and exercise science, where hypothesis-testing articles often include dozens of statistical tests to evaluate the hypothesis of interest.
+
+To improve the clarity of researcher questions in biomedical clinical trials, the International Council for Harmonisation of Technical Requirements for Registration of Pharmaceuticals for Human Use proposed the adoption of the estimand framework [@ICH9]. The key terms of the estimand framework are summarised in @tbl-tbl1.2).
+
+::: {#tbl-tbl1.2}
+| Estimand Framework | Description |
+|:---|:---|
+| Estimand | The specific research question to be answered. |
+| Population | It describes which participants are targeted by the research question (e.g., patients with mild patellar tendinopathy). |
+| Intervention | It describes which versions of interventions researchers want to compare (e.g., eight sessions of strength training without the use of medication vs. with medication). |
+| Outcome/end-point | It describes the outcome used to to compare interventions at a specific endpoint (pain assessed by means of pain pressure threshold at 12 weeks). |
+| Summary outcome | It describes how outcomes will be summarised and compared between interventions (e.g., mean difference). This is the numerical value computed by the estimator. |
+| Intercurrent events | Events occurring after intervention initiation that affect the interpretation of the estimand. Common examples in biomedical research include treatment discontinuation, treatment switching, use of rescue medication, or death. There are five common strategies (treatment policy, composite, while on treatment, hypothetical, and principal stratum) to handle intercurrent events and researchers need to specify the strategy adopted as part of their estimand. |
+| Estimator | The statistical method used to analyse the data and compute a summary outcome (e.g., an ANCOVA model that includes change scores as a covariate). |
+
+: Key elements of the estimand framework.
+:::
+
+Readers are referred to Kahan et al. [-@kahan_estimands2024] and Lawrance et al. [-@lawrance2020] for comprehensive overviews of the estimand framework. The field of sport and exercise science would greatly benefit from adopting this framework considering, given the frequent ambiguity of hypotheses and lack of clarity regarding which test—or set of tests—is used to evaluate the hypothesis of interest. @tbl-tbl1.3 provides an example of how the previously ambiguous hypothesis could be reformulated using the estimand framework.
+
+$H$: National-level football players taking a nap after sleep deprivation (Intervention) will show a significantly greater mean increase in counter-movement jump height or shorter time to complete a 10-meter sprint, 30-minute post-nap, compared with national-level football players who do not nap after sleep deprivation.
+
+::: {#tbl-tbl1.3}
+| Estimand Framework | Description |
+|:---|:---|
+| Population | National-level football players. |
+| Intervention | Taking a nap after sleep deprivation in comparison to not taking a nap. |
+| Outcome/end-point | Counter-movement jump height and time to complete a 10-meter sprint measured 30-minute post-nap. |
+| Summary outcome | Difference in change scores between the nap and no-nap groups. |
+| Intercurrent events | Treatment policy strategy (the effect measured irrespective of whether participants take naps of shorter or longer duration). Other examples include estimating the intervention effect regardless of whether participants discontinue the intervention early. For instance, if participants complete only 4 out of the 8 prescribed sessions, they would still be included in the analysis under the treatment strategy policy. |
+| Estimator | An ANCOVA model with change scores as a covariate. |
+
+: Example of estimands for a study using a between-subject design with pre- vs. post-intervention measurements.
+:::
+
+The choice of the connector “and” or “or” in the research question or hypothesis determines the adopted testing approach. Thus, sports scientists should ensure that the testing approach is aligned with its corresponding connector (i.e., the connector “and” should correspond to an intersection-union approach and “or” should correspond to the “union-intersection approach). Formulating the hypothesis following the estimand framework should be accompanied by a clear statement of the adopted testing approach and any performed $\alpha$ adjustments, if applicable. Such a statement could read: *“*$\alpha$ *adjustments were applied based on a union-intersection testing approach, wherein the new intervention would be considered superior to the comparator group if it demonstrated a significant improvement in at least one of the two primary outcomes. To control the type I error, we applied a Bonferroni correction, dividing* $\alpha$ *by two. This resulted in an adjusted* $\alpha$ *level of 0.025 for the main effect of each test”.*
+
+Best practice would be to include the estimand framework as part of the preregistration. Sports scientists aiming to establish equivalence [@mazzolari_2022] or whether two interventions differ by a certain margin [@murphy1999] would have to include the SESOI in the definition of their intervention effect. Researchers should provide a preregistration of all statistical tests that lead to a scientific claim (as opposed to exploratory tests, which lead to a new hypothesis), where they clearly state how $\alpha$ adjustments are performed for all hypothesis tests. This information should also be reported in the article itself, and any deviations from the preregistration need to be highlighted and discussed [@lakens_deviations_2024].
+
+## Discussion
+
+The published literature in sports and exercise science is often characterised by claims based on a vaguely specified hypothesis, and statistical tests that are not aligned with scientific claims. Why do so many studies published in sports and exercise science seem to suffer from these two issues? We can identify three potential reasons. First, sports scientists often receive minimal training in statistics beyond basic techniques like *t*-tests and ANOVAs. As a result, hypothesis testing becomes more of a ritual than a carefully planned methodological process [@gigerenzer2004]. It is therefore not surprising that many studies involve inappropriate statistical tests, leading to claims that are not logically aligned with the hypothesis test used. This issue could be mitigated through closer collaboration with applied statisticians [@sainani_collaboration], by strengthening statistical education and providing a more focused education pathway on the philosophy of science would greatly improve how sports scientists formulate and test their hypotheses.
+
+Second, a growing concern in sports and exercise science is that many hypotheses in the published literature are inherently ambiguous [@mesquida_2023; @buttner2020]. The distinguishing feature of ambiguous hypotheses is that they can be tested in multiple ways, making the hypothesis easier to corroborate at the expense of inflating type I error. Researchers can conduct multiple hypothesis tests as a strategy to obtain statistical significance. When the average power of studies in the field is 11% [@mesquida_zcurve_2025], one way to increase the probability of finding a significant effect is by conducting multiple hypothesis tests for a single hypothesis [@maxwell_2004; @schmidt2015]. While the power of any specific test might be low, the probability of obtaining at least one significant effect increases with the number of hypothesis tests conducted. It is common practice to not define the intervention effect and use an umbrella outcome that can be measured or operationalised in several alternative ways, allowing researchers to claim support for their tested hypothesis at the expense of inflated type I errors. This may explain why, despite an average power of 11% in sports and exercise science, nearly 70% of studies reported a significant result that supported the hypothesis tested [@mesquida_zcurve_2025]. This is not a trivial issue. An inflated type I error rate in the published literature hinders the replicability of scientific findings. For example, the recent large-scale replication effort by the Sports Science Replication Centre [@murphy_replicability_2025] reported a replication rate as low as 28%. Collectively, these concerns highlight the urgent need to improve research practices.
+
+Researchers may also exploit the ambiguity of their hypotheses to engage in what Frankenhuis et al. [-@strategic_ambiguity] term ‘strategic ambiguity’. This ambiguity not only facilitates corroboration but also leaves readers uncertain about what was actually hypothesised and what result(s) would corroborate or falsify the hypothesis. As a result, strategic ambiguity hinders scrutiny, making it difficult for peers to evaluate the intended intervention effect, assess the appropriateness of the study design and determine whether the study claim is justified. Scientific knowledge can progress when researchers make claims that can be scrutinised, enabling peers to design experiments to replicate or falsify previous findings or test the same effect under different conditions. Thus, sports scientists should strive to state their hypothesis and the corresponding statistical tests with as much precision as possible [@machine_readable2021].
+
+Third, in the early phases of research, researchers are not expected to have a strong understanding of the theoretical underpinnings of the phenomena under investigation. As a result, most hypotheses might be exploratory. The goal of exploratory research is to identify patterns, associations, and interactions between experimental conditions using statistical tests, without controlling error rates. In contrast, confirmatory research attempts to severely test pre-specified hypotheses using hypothesis tests and controlling error rates. In many fields, including sport and exercise science, exploratory research is not openly reported [@ditroilo_exploratory], but represents a critical part of the research continuum [@scheel_why_hypothesis]. Poorly defined intervention effects, especially when studies include multiple interventions and the measurement of several primary outcomes, imply that many studies in which hypothesis tests are performed are more exploratory than confirmatory. Researchers might be able to control error rates be preregistering all tests they plan to perform, and lower the $\alpha$ level for each test (for example, by using a Bonferroni correction). However, it might be more realistic to admit that it is too premature to test a hypothesis, and instead refrain from making any claims. In exploratory research, statistical tests function as a tool to generate hypotheses and not as a test of hypotheses.
+
+## Conclusion
+
+NHST is a methodological procedure that allows sports scientists to make claims about the effect of interventions while controlling error rates. To be useful, NHST requires a clearly defined hypothesis and the use of an appropriate hypothesis test. However, NHST is often applied mindlessly, leading to situations in which stated hypotheses are not actually tested (Misalignment 1-3), or where type I and type II errors are inflated (Misalignment 4-5)—ultimately resulting in misleading claims—. To address these issues, we recommend increased collaboration between sports scientists and applied statisticians and enhanced statistical training within the field. Additionally, we advocate for the adoption of preregistration and Registered Reports, and for the adoption of the estimand framework, which provides a structured approach for defining the intervention effect that a study aims to determine. By requiring researchers to specify the population, intervention, outcome, summary outcome, and estimator, the estimand framework promotes clarity about the hypothesis being tested and enhances transparency.
+
+## References
